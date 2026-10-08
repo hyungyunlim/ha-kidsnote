@@ -6,6 +6,7 @@ import asyncio
 from datetime import datetime, timedelta
 import logging
 from pathlib import Path
+import time
 
 from aiohttp import ClientError, DummyCookieJar
 
@@ -57,6 +58,7 @@ class KidsnoteRunner:
         self.last_success: datetime | None = None
         self.last_error: str | None = None
         self.last_delivered = 0
+        self._saved_at = 0.0
 
     @callback
     def start(self, _now: datetime | None = None) -> None:
@@ -66,10 +68,22 @@ class KidsnoteRunner:
             self.syncing = True
             self.task = self.entry.async_create_background_task(self.hass, self._run(), f"{DOMAIN} sync")
 
+    @callback
+    def progress(self) -> None:
+        """Count a delivered post; at most every 30 s, save state and refresh the sensor."""
+        self.last_delivered += 1
+        # Throttle rather than debounce: async_delay_save keeps postponing its write
+        # while posts stream in, so a crash mid-backfill would lose all progress.
+        if (now := time.monotonic()) - self._saved_at >= 30:
+            self._saved_at = now
+            self.store.async_delay_save(self.syncer.data, 0)
+            async_dispatcher_send(self.hass, signal_updated(self.entry.entry_id))
+
     async def _run(self) -> None:
+        self.last_delivered = 0
         async_dispatcher_send(self.hass, signal_updated(self.entry.entry_id))
         try:
-            self.last_delivered = await self.syncer.run()
+            await self.syncer.run()
         except KidsnoteAuthError as err:
             self.last_error = str(err)
             self.needs_reauth = True
@@ -154,9 +168,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: KidsnoteConfigEntry) -> 
         album=options.get(CONF_ALBUM, DEFAULT_ALBUM),
         deliver=_script_deliverer(hass, options[CONF_SCRIPT]) if options.get(CONF_SCRIPT) else None,
         run_io=hass.async_add_executor_job,
-        on_progress=lambda: store.async_delay_save(syncer.data, 10),
     )
     runner = KidsnoteRunner(hass, entry, syncer, store)
+    syncer.on_progress = runner.progress
     entry.runtime_data = runner
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
