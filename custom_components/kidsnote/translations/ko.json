@@ -1,0 +1,91 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Kidsnote",
+        "description": "키즈노트 계정으로 로그인합니다. 비밀번호는 이 Home Assistant에만 저장됩니다.",
+        "data": {
+          "username": "키즈노트 아이디",
+          "password": "비밀번호",
+          "immich_url": "Immich 주소 (선택)",
+          "immich_api_key": "Immich API 키",
+          "album_name": "Immich 앨범 이름",
+          "delivery_script": "전달 스크립트 (선택)",
+          "interval_minutes": "확인 주기 (분)"
+        },
+        "data_description": {
+          "immich_url": "예: http://192.168.0.10:2283 — 비우면 Immich 업로드를 건너뜁니다.",
+          "immich_api_key": "권한: asset.upload, asset.update, album.read, album.create, albumAsset.create",
+          "album_name": "child 자리표시자에 아이 이름이 들어갑니다. 없으면 만듭니다.",
+          "delivery_script": "새 게시물마다 호출합니다. 성공하면 끝에서 ok: true 응답을 반환해야 합니다 (README 참고).",
+          "interval_minutes": "처음 실행은 과거 전체를 받고, 이후엔 새 게시물만 확인합니다."
+        }
+      },
+      "reauth_confirm": {
+        "title": "키즈노트 다시 로그인",
+        "description": "{username} 계정의 비밀번호를 입력하세요.",
+        "data": {
+          "password": "비밀번호"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "키즈노트 아이디 또는 비밀번호가 틀렸습니다.",
+      "blocked": "로그인 실패가 반복돼 키즈노트 계정이 잠겼습니다. 키즈노트에서 비밀번호를 재설정하세요.",
+      "two_factor": "키즈노트 2단계 인증이 켜져 있어 자동 로그인할 수 없습니다. 2단계 인증을 끄고 다시 시도하세요.",
+      "cannot_connect": "키즈노트에 연결할 수 없습니다.",
+      "no_children": "이 계정에 연결된 아이가 없습니다.",
+      "immich_key_required": "Immich 주소를 넣었다면 API 키도 필요합니다.",
+      "immich_auth": "Immich API 키가 거부됐습니다. 키와 권한을 확인하세요.",
+      "immich_connect": "Immich에 연결할 수 없습니다."
+    },
+    "abort": {
+      "already_configured": "이 키즈노트 계정은 이미 추가되어 있습니다.",
+      "reauth_successful": "다시 로그인했습니다."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Kidsnote",
+        "data": {
+          "immich_url": "Immich 주소 (선택)",
+          "immich_api_key": "Immich API 키",
+          "album_name": "Immich 앨범 이름",
+          "delivery_script": "전달 스크립트 (선택)",
+          "interval_minutes": "확인 주기 (분)"
+        },
+        "data_description": {
+          "immich_url": "예: http://192.168.0.10:2283 — 비우면 Immich 업로드를 건너뜁니다.",
+          "immich_api_key": "권한: asset.upload, asset.update, album.read, album.create, albumAsset.create",
+          "album_name": "child 자리표시자에 아이 이름이 들어갑니다. 없으면 만듭니다.",
+          "delivery_script": "새 게시물마다 호출합니다. 성공하면 끝에서 ok: true 응답을 반환해야 합니다 (README 참고).",
+          "interval_minutes": "처음 실행은 과거 전체를 받고, 이후엔 새 게시물만 확인합니다."
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "키즈노트 아이디 또는 비밀번호가 틀렸습니다.",
+      "blocked": "로그인 실패가 반복돼 키즈노트 계정이 잠겼습니다. 키즈노트에서 비밀번호를 재설정하세요.",
+      "two_factor": "키즈노트 2단계 인증이 켜져 있어 자동 로그인할 수 없습니다. 2단계 인증을 끄고 다시 시도하세요.",
+      "cannot_connect": "키즈노트에 연결할 수 없습니다.",
+      "no_children": "이 계정에 연결된 아이가 없습니다.",
+      "immich_key_required": "Immich 주소를 넣었다면 API 키도 필요합니다.",
+      "immich_auth": "Immich API 키가 거부됐습니다. 키와 권한을 확인하세요.",
+      "immich_connect": "Immich에 연결할 수 없습니다."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "last_sync": {
+        "name": "마지막 동기화"
+      }
+    }
+  },
+  "services": {
+    "sync": {
+      "name": "지금 동기화",
+      "description": "키즈노트에서 새 알림장과 앨범을 바로 확인합니다."
+    }
+  }
+}

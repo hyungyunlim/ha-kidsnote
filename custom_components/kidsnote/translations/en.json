@@ -1,0 +1,91 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Kidsnote",
+        "description": "Log in with your Kidsnote account. The password stays in this Home Assistant.",
+        "data": {
+          "username": "Kidsnote username",
+          "password": "Password",
+          "immich_url": "Immich URL (optional)",
+          "immich_api_key": "Immich API key",
+          "album_name": "Immich album name",
+          "delivery_script": "Delivery script (optional)",
+          "interval_minutes": "Check interval (minutes)"
+        },
+        "data_description": {
+          "immich_url": "e.g. http://192.168.0.10:2283. Leave empty to skip Immich.",
+          "immich_api_key": "Permissions: asset.upload, asset.update, album.read, album.create, albumAsset.create",
+          "album_name": "The child placeholder becomes the child's name. Created when missing.",
+          "delivery_script": "Called for each new post. It must end by returning an ok: true response (see README).",
+          "interval_minutes": "The first run backs up everything; later runs only look for new posts."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Log in to Kidsnote again",
+        "description": "Enter the password for {username}.",
+        "data": {
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Wrong Kidsnote username or password.",
+      "blocked": "Kidsnote locked the account after repeated failures. Reset the password on Kidsnote.",
+      "two_factor": "Kidsnote 2-step verification is on, so automatic login is impossible. Turn it off and try again.",
+      "cannot_connect": "Cannot reach Kidsnote.",
+      "no_children": "This account has no children.",
+      "immich_key_required": "An Immich URL needs an API key.",
+      "immich_auth": "Immich rejected the API key. Check the key and its permissions.",
+      "immich_connect": "Cannot reach Immich."
+    },
+    "abort": {
+      "already_configured": "This Kidsnote account is already set up.",
+      "reauth_successful": "Logged in again."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Kidsnote",
+        "data": {
+          "immich_url": "Immich URL (optional)",
+          "immich_api_key": "Immich API key",
+          "album_name": "Immich album name",
+          "delivery_script": "Delivery script (optional)",
+          "interval_minutes": "Check interval (minutes)"
+        },
+        "data_description": {
+          "immich_url": "e.g. http://192.168.0.10:2283. Leave empty to skip Immich.",
+          "immich_api_key": "Permissions: asset.upload, asset.update, album.read, album.create, albumAsset.create",
+          "album_name": "The child placeholder becomes the child's name. Created when missing.",
+          "delivery_script": "Called for each new post. It must end by returning an ok: true response (see README).",
+          "interval_minutes": "The first run backs up everything; later runs only look for new posts."
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Wrong Kidsnote username or password.",
+      "blocked": "Kidsnote locked the account after repeated failures. Reset the password on Kidsnote.",
+      "two_factor": "Kidsnote 2-step verification is on, so automatic login is impossible. Turn it off and try again.",
+      "cannot_connect": "Cannot reach Kidsnote.",
+      "no_children": "This account has no children.",
+      "immich_key_required": "An Immich URL needs an API key.",
+      "immich_auth": "Immich rejected the API key. Check the key and its permissions.",
+      "immich_connect": "Cannot reach Immich."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "last_sync": {
+        "name": "Last sync"
+      }
+    }
+  },
+  "services": {
+    "sync": {
+      "name": "Sync now",
+      "description": "Check Kidsnote for new reports and albums right away."
+    }
+  }
+}
