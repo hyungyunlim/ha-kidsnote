@@ -15,7 +15,7 @@ from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_create_clientsession, async_get_clientsession
 
 from .const import (
-    CONF_ALBUM,
+    CONF_ALBUMS,
     CONF_IMMICH_API_KEY,
     CONF_IMMICH_URL,
     CONF_INTERVAL,
@@ -45,34 +45,32 @@ OPTIONS_SCHEMA = vol.Schema(
 )
 
 
-def _album_schema(albums: list[dict[str, Any]]) -> vol.Schema:
-    """Existing albums are stored by id; typing a name template is still allowed."""
+def _album_schema(albums: list[dict[str, Any]], children: list[str]) -> vol.Schema:
+    """One album pick per child, keyed by the child's name (it doubles as the label).
+
+    Existing albums are stored by id; typing a name template is still allowed.
+    """
     options = [selector.SelectOptionDict(value=DEFAULT_ALBUM, label=DEFAULT_ALBUM)] + [
         selector.SelectOptionDict(value=a["id"], label=f"{a['albumName']} ({a.get('assetCount', 0)})")
         for a in sorted(albums, key=lambda a: str(a.get("albumName", "")).lower())
     ]
-    return vol.Schema(
-        {
-            vol.Required(CONF_ALBUM, default=DEFAULT_ALBUM): selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=options, custom_value=True, mode=selector.SelectSelectorMode.DROPDOWN
-                )
-            )
-        }
+    pick = selector.SelectSelector(
+        selector.SelectSelectorConfig(options=options, custom_value=True, mode=selector.SelectSelectorMode.DROPDOWN)
     )
+    return vol.Schema({vol.Required(child, default=DEFAULT_ALBUM): pick for child in children})
 
 
-async def _check_kidsnote(hass: HomeAssistant, username: str, password: str) -> str | None:
-    """Error key, or None when the login works and the account has children."""
+async def _kidsnote_children(hass: HomeAssistant, username: str, password: str) -> tuple[str | None, list[str]]:
+    """(error key, children's names). Logging in is the only way to learn the children."""
     # ponytail: HA closes it at shutdown (it warns if we close it); flows are rare.
     session = async_create_clientsession(hass, cookie_jar=DummyCookieJar())
     try:
         children = await Kidsnote(session, username, password).children()
     except KidsnoteAuthError as err:
-        return err.reason
+        return err.reason, []
     except (KidsnoteError, ClientError, TimeoutError):
-        return "cannot_connect"
-    return None if children else "no_children"
+        return "cannot_connect", []
+    return (None, [c["name"] for c in children]) if children else ("no_children", [])
 
 
 async def _immich_albums(hass: HomeAssistant, options: Mapping[str, Any]) -> tuple[dict[str, str], list[dict[str, Any]]]:
@@ -95,6 +93,7 @@ class KidsnoteConfigFlow(ConfigFlow, domain=DOMAIN):
         self._data: dict[str, Any] = {}
         self._options: dict[str, Any] = {}
         self._albums: list[dict[str, Any]] = []
+        self._children: list[str] = []
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
@@ -103,7 +102,8 @@ class KidsnoteConfigFlow(ConfigFlow, domain=DOMAIN):
             await self.async_set_unique_id(username.lower())
             self._abort_if_unique_id_configured()
             options = {k: v for k, v in user_input.items() if k not in (CONF_USERNAME, CONF_PASSWORD)}
-            if reason := await _check_kidsnote(self.hass, username, user_input[CONF_PASSWORD]):
+            reason, self._children = await _kidsnote_children(self.hass, username, user_input[CONF_PASSWORD])
+            if reason:
                 errors["base"] = reason
             else:
                 errors, self._albums = await _immich_albums(self.hass, options)
@@ -121,9 +121,9 @@ class KidsnoteConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_album(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if user_input is not None:
             return self.async_create_entry(
-                title=self._data[CONF_USERNAME], data=self._data, options={**self._options, **user_input}
+                title=self._data[CONF_USERNAME], data=self._data, options={**self._options, CONF_ALBUMS: user_input}
             )
-        return self.async_show_form(step_id="album", data_schema=_album_schema(self._albums))
+        return self.async_show_form(step_id="album", data_schema=_album_schema(self._albums, self._children))
 
     async def async_step_reauth(self, entry_data: Mapping[str, Any]) -> ConfigFlowResult:
         return await self.async_step_reauth_confirm()
@@ -132,7 +132,8 @@ class KidsnoteConfigFlow(ConfigFlow, domain=DOMAIN):
         entry = self._get_reauth_entry()
         errors: dict[str, str] = {}
         if user_input is not None:
-            if reason := await _check_kidsnote(self.hass, entry.data[CONF_USERNAME], user_input[CONF_PASSWORD]):
+            reason, _ = await _kidsnote_children(self.hass, entry.data[CONF_USERNAME], user_input[CONF_PASSWORD])
+            if reason:
                 errors["base"] = reason
             else:
                 return self.async_update_reload_and_abort(entry, data_updates=user_input)
@@ -153,15 +154,21 @@ class KidsnoteOptionsFlow(OptionsFlowWithReload):
     def __init__(self) -> None:
         self._options: dict[str, Any] = {}
         self._albums: list[dict[str, Any]] = []
+        self._children: list[str] = []
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
             errors, self._albums = await _immich_albums(self.hass, user_input)
-            if not errors:
-                if user_input.get(CONF_IMMICH_URL):
+            if not errors and user_input.get(CONF_IMMICH_URL):
+                data = self.config_entry.data
+                reason, self._children = await _kidsnote_children(self.hass, data[CONF_USERNAME], data[CONF_PASSWORD])
+                if reason:
+                    errors["base"] = reason
+                else:
                     self._options = user_input
                     return await self.async_step_album()
+            elif not errors:
                 return self.async_create_entry(data=user_input)
         return self.async_show_form(
             step_id="init",
@@ -171,6 +178,8 @@ class KidsnoteOptionsFlow(OptionsFlowWithReload):
 
     async def async_step_album(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if user_input is not None:
-            return self.async_create_entry(data={**self._options, **user_input})
-        schema = self.add_suggested_values_to_schema(_album_schema(self._albums), self.config_entry.options)
+            return self.async_create_entry(data={**self._options, CONF_ALBUMS: user_input})
+        schema = self.add_suggested_values_to_schema(
+            _album_schema(self._albums, self._children), self.config_entry.options.get(CONF_ALBUMS, {})
+        )
         return self.async_show_form(step_id="album", data_schema=schema)

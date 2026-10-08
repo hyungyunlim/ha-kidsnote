@@ -60,7 +60,8 @@ class Syncer:
         state: dict[str, Any],
         *,
         immich: Immich | None = None,
-        album: str = "Kidsnote - {child}",
+        albums: dict[str, str] | None = None,
+        default_album: str = "Kidsnote - {child}",
         deliver: Deliver | None = None,
         run_io: Callable[..., Awaitable[Any]] | None = None,
         on_progress: Callable[[], None] | None = None,
@@ -68,7 +69,8 @@ class Syncer:
         self.kidsnote = kidsnote
         self.root = root
         self.immich = immich
-        self.album = album
+        self.albums = albums or {}
+        self.default_album = default_album
         self.deliver = deliver
         self.run_io = run_io or asyncio.to_thread
         self.on_progress = on_progress
@@ -145,7 +147,8 @@ class Syncer:
             if text:
                 for asset_id in asset_ids:
                     await self.immich.describe(asset_id, text)
-            album_id = await self.immich.album(self.album, post.child)
+            target = self.albums.get(post.child, self.default_album)
+            album_id = await self.immich.album(target, post.child)
             await self.immich.add_to_album(album_id, asset_ids)
 
         if self.deliver:

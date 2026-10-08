@@ -28,13 +28,7 @@
       },
       "album": {
         "title": "Immich album",
-        "description": "Pick the Immich album for photos and videos.",
-        "data": {
-          "album": "Album"
-        },
-        "data_description": {
-          "album": "An existing album from the list is saved by its id, so renaming it in Immich changes nothing. The template at the top, or a name you type, is matched by name with the child placeholder replaced by the child's name, and created when missing: one album per child."
-        }
+        "description": "Pick the Immich album for each child's photos and videos.\n\n- An existing album from the list is saved by its id, so renaming it in Immich changes nothing.\n- The template at the top, or a name you type, is matched by name with the child placeholder replaced by the child's name, and created when missing.\n- A child added to the account later gets its own album from the template."
       }
     },
     "error": {
@@ -71,13 +65,7 @@
       },
       "album": {
         "title": "Immich album",
-        "description": "Pick the Immich album for photos and videos.",
-        "data": {
-          "album": "Album"
-        },
-        "data_description": {
-          "album": "An existing album from the list is saved by its id, so renaming it in Immich changes nothing. The template at the top, or a name you type, is matched by name with the child placeholder replaced by the child's name, and created when missing: one album per child."
-        }
+        "description": "Pick the Immich album for each child's photos and videos.\n\n- An existing album from the list is saved by its id, so renaming it in Immich changes nothing.\n- The template at the top, or a name you type, is matched by name with the child placeholder replaced by the child's name, and created when missing.\n- A child added to the account later gets its own album from the template."
       }
     },
     "error": {

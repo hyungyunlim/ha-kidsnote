@@ -23,7 +23,7 @@ from homeassistant.helpers.typing import ConfigType
 from homeassistant.util import dt as dt_util
 
 from .const import (
-    CONF_ALBUM,
+    CONF_ALBUMS,
     CONF_IMMICH_API_KEY,
     CONF_IMMICH_URL,
     CONF_INTERVAL,
@@ -165,7 +165,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: KidsnoteConfigEntry) -> 
         media_base / DOMAIN,
         await store.async_load() or {},
         immich=immich,
-        album=options.get(CONF_ALBUM, DEFAULT_ALBUM),
+        # A child without its own pick (e.g. a sibling who joins later) gets the template.
+        albums=options.get(CONF_ALBUMS, {}),
+        default_album=DEFAULT_ALBUM,
         deliver=_script_deliverer(hass, options[CONF_SCRIPT]) if options.get(CONF_SCRIPT) else None,
         run_io=hass.async_add_executor_job,
     )
