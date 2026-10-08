@@ -11,6 +11,10 @@
                      └──▶ script.<전달 스크립트> (선택): 알림, Google Photos, OneDrive …
 ```
 
+> **비공식 프로젝트입니다.** 키즈노트(Kidsnote)와 관련 없는 개인 프로젝트이며, 키즈노트가 공개한 API가 아니라 kidsnote.com 웹이 내부에서 쓰는 API를 사용합니다. 그래서 키즈노트가 구조를 바꾸면 예고 없이 동작하지 않을 수 있습니다. 본인 계정으로 볼 수 있는 **본인 자녀의 자료를 개인적으로 백업하는 용도**로만 쓰세요. 키즈노트 이용약관을 지키는 것은 사용자 책임입니다.
+>
+> *Unofficial and not affiliated with Kidsnote. It relies on the private API behind kidsnote.com and may break without notice. Use it only to back up your own children's data from your own account, and at your own responsibility under Kidsnote's terms.*
+
 ## 왜 아이디/비밀번호인가
 
 키즈노트 `sessionid` 쿠키는 로그인 후 14일이면 만료됩니다. 쿠키만 저장하는 방식은 2주마다 끊길 수밖에 없습니다. 이 통합은 비밀번호를 이 HA 안에만 저장하고, 세션이 만료되면 알아서 다시 로그인합니다. 새로 로그인해도 휴대폰 앱이나 브라우저의 로그인은 유지됩니다. 비밀번호가 바뀌면 HA에 "다시 인증 필요" 알림이 뜹니다.
@@ -92,8 +96,12 @@ script:
 
 ## 참고
 
-- 키즈노트가 공식적으로 공개한 API가 아니라 kidsnote.com 웹이 내부에서 쓰는 API를 사용합니다. 키즈노트가 구조를 바꾸면 동작하지 않을 수 있습니다.
+- 받은 사진과 영상, 알림장 본문은 이 HA와 지정한 Immich 밖으로 나가지 않습니다. 외부로 요청을 보내는 곳은 키즈노트뿐입니다.
 - 비밀번호는 HA의 `.storage/core.config_entries`에 다른 통합의 자격 증명과 같은 방식으로 저장됩니다.
 - 받은 파일은 `/media/kidsnote`에 남습니다. HA 백업 크기가 걱정되면 백업에서 Media 폴더를 빼세요.
 - 백필이 끝난 뒤에는 첫 페이지보다 오래된 글이 수정돼도 다시 확인하지 않습니다.
 - 동기화 로직 테스트: `python3 tests/test_sync.py`
+
+## 라이선스
+
+[MIT](LICENSE)
