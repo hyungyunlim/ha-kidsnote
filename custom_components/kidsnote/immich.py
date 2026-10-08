@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from datetime import datetime
+import re
 from typing import Any
 
 import aiohttp
+
+_UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.IGNORECASE)
 
 
 class ImmichError(Exception):
@@ -37,8 +40,16 @@ class Immich:
     async def albums(self) -> list[dict[str, Any]]:
         return await self._call("GET", "/albums")
 
-    async def album(self, name: str) -> str:
-        """Id of the album with this name, created when missing."""
+    async def album(self, target: str, child: str) -> str:
+        """Album id for a child's assets.
+
+        ``target`` is an album id picked in the options, used as is so renaming
+        the album in Immich changes nothing, or a name template whose "{child}"
+        becomes the child's name, found by exact name or created.
+        """
+        if _UUID.fullmatch(target):
+            return target
+        name = target.replace("{child}", child)
         if name not in self._albums:
             found = next((a["id"] for a in await self.albums() if a.get("albumName") == name), None)
             self._albums[name] = found or (await self._call("POST", "/albums", json={"albumName": name}))["id"]

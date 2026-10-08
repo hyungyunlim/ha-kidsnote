@@ -35,7 +35,6 @@ OPTIONS_SCHEMA = vol.Schema(
             selector.TextSelectorConfig(type=selector.TextSelectorType.URL)
         ),
         vol.Optional(CONF_IMMICH_API_KEY): PASSWORD,
-        vol.Required(CONF_ALBUM, default=DEFAULT_ALBUM): str,
         vol.Optional(CONF_SCRIPT): selector.EntitySelector(selector.EntitySelectorConfig(domain="script")),
         vol.Required(CONF_INTERVAL, default=DEFAULT_INTERVAL): selector.NumberSelector(
             selector.NumberSelectorConfig(
@@ -44,6 +43,23 @@ OPTIONS_SCHEMA = vol.Schema(
         ),
     }
 )
+
+
+def _album_schema(albums: list[dict[str, Any]]) -> vol.Schema:
+    """Existing albums are stored by id; typing a name template is still allowed."""
+    options = [selector.SelectOptionDict(value=DEFAULT_ALBUM, label=DEFAULT_ALBUM)] + [
+        selector.SelectOptionDict(value=a["id"], label=f"{a['albumName']} ({a.get('assetCount', 0)})")
+        for a in sorted(albums, key=lambda a: str(a.get("albumName", "")).lower())
+    ]
+    return vol.Schema(
+        {
+            vol.Required(CONF_ALBUM, default=DEFAULT_ALBUM): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=options, custom_value=True, mode=selector.SelectSelectorMode.DROPDOWN
+                )
+            )
+        }
+    )
 
 
 async def _check_kidsnote(hass: HomeAssistant, username: str, password: str) -> str | None:
@@ -59,20 +75,26 @@ async def _check_kidsnote(hass: HomeAssistant, username: str, password: str) -> 
     return None if children else "no_children"
 
 
-async def _check_immich(hass: HomeAssistant, options: Mapping[str, Any]) -> dict[str, str]:
+async def _immich_albums(hass: HomeAssistant, options: Mapping[str, Any]) -> tuple[dict[str, str], list[dict[str, Any]]]:
+    """(errors, albums). Both are empty when no Immich URL is set."""
     if not options.get(CONF_IMMICH_URL):
-        return {}
+        return {}, []
     if not options.get(CONF_IMMICH_API_KEY):
-        return {CONF_IMMICH_API_KEY: "immich_key_required"}
+        return {CONF_IMMICH_API_KEY: "immich_key_required"}, []
     try:
-        await Immich(async_get_clientsession(hass), options[CONF_IMMICH_URL], options[CONF_IMMICH_API_KEY]).albums()
+        immich = Immich(async_get_clientsession(hass), options[CONF_IMMICH_URL], options[CONF_IMMICH_API_KEY])
+        return {}, await immich.albums()
     except ImmichError as err:
-        return {"base": "immich_auth" if err.status in (401, 403) else "immich_connect"}
-    return {}
+        return {"base": "immich_auth" if err.status in (401, 403) else "immich_connect"}, []
 
 
 class KidsnoteConfigFlow(ConfigFlow, domain=DOMAIN):
     VERSION = 1
+
+    def __init__(self) -> None:
+        self._data: dict[str, Any] = {}
+        self._options: dict[str, Any] = {}
+        self._albums: list[dict[str, Any]] = []
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
@@ -84,17 +106,24 @@ class KidsnoteConfigFlow(ConfigFlow, domain=DOMAIN):
             if reason := await _check_kidsnote(self.hass, username, user_input[CONF_PASSWORD]):
                 errors["base"] = reason
             else:
-                errors = await _check_immich(self.hass, options)
+                errors, self._albums = await _immich_albums(self.hass, options)
             if not errors:
-                return self.async_create_entry(
-                    title=username,
-                    data={CONF_USERNAME: username, CONF_PASSWORD: user_input[CONF_PASSWORD]},
-                    options=options,
-                )
+                self._data = {CONF_USERNAME: username, CONF_PASSWORD: user_input[CONF_PASSWORD]}
+                self._options = options
+                if options.get(CONF_IMMICH_URL):
+                    return await self.async_step_album()
+                return self.async_create_entry(title=username, data=self._data, options=options)
         schema = LOGIN_SCHEMA.extend(OPTIONS_SCHEMA.schema)
         return self.async_show_form(
             step_id="user", data_schema=self.add_suggested_values_to_schema(schema, user_input or {}), errors=errors
         )
+
+    async def async_step_album(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        if user_input is not None:
+            return self.async_create_entry(
+                title=self._data[CONF_USERNAME], data=self._data, options={**self._options, **user_input}
+            )
+        return self.async_show_form(step_id="album", data_schema=_album_schema(self._albums))
 
     async def async_step_reauth(self, entry_data: Mapping[str, Any]) -> ConfigFlowResult:
         return await self.async_step_reauth_confirm()
@@ -121,14 +150,27 @@ class KidsnoteConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class KidsnoteOptionsFlow(OptionsFlowWithReload):
+    def __init__(self) -> None:
+        self._options: dict[str, Any] = {}
+        self._albums: list[dict[str, Any]] = []
+
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
-            errors = await _check_immich(self.hass, user_input)
+            errors, self._albums = await _immich_albums(self.hass, user_input)
             if not errors:
+                if user_input.get(CONF_IMMICH_URL):
+                    self._options = user_input
+                    return await self.async_step_album()
                 return self.async_create_entry(data=user_input)
         return self.async_show_form(
             step_id="init",
             data_schema=self.add_suggested_values_to_schema(OPTIONS_SCHEMA, user_input or self.config_entry.options),
             errors=errors,
         )
+
+    async def async_step_album(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        if user_input is not None:
+            return self.async_create_entry(data={**self._options, **user_input})
+        schema = self.add_suggested_values_to_schema(_album_schema(self._albums), self.config_entry.options)
+        return self.async_show_form(step_id="album", data_schema=schema)

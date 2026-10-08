@@ -2,7 +2,7 @@ DOMAIN = "kidsnote"
 
 CONF_IMMICH_URL = "immich_url"
 CONF_IMMICH_API_KEY = "immich_api_key"
-CONF_ALBUM = "album_name"
+CONF_ALBUM = "album"
 CONF_SCRIPT = "delivery_script"
 CONF_INTERVAL = "interval_minutes"
 

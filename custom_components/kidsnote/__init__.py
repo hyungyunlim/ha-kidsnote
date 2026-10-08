@@ -151,7 +151,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: KidsnoteConfigEntry) -> 
         media_base / DOMAIN,
         await store.async_load() or {},
         immich=immich,
-        album_name=options.get(CONF_ALBUM, DEFAULT_ALBUM),
+        album=options.get(CONF_ALBUM, DEFAULT_ALBUM),
         deliver=_script_deliverer(hass, options[CONF_SCRIPT]) if options.get(CONF_SCRIPT) else None,
         run_io=hass.async_add_executor_job,
         on_progress=lambda: store.async_delay_save(syncer.data, 10),

@@ -63,8 +63,8 @@ class FakeImmich:
     async def describe(self, asset_id, text):
         self.descriptions[asset_id] = text
 
-    async def album(self, name):
-        assert name == "Kidsnote - 하늘"
+    async def album(self, target, child):
+        assert (target, child) == ("Kidsnote - {child}", "하늘")
         return "album-1"
 
     async def add_to_album(self, album_id, ids):
